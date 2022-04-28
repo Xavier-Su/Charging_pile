@@ -58,7 +58,23 @@ class Modbus_Rtu:
     def Analysis_rtu(self, recv_data):               #解析RTU帧
         self.recv_data = recv_data
         self.function_code = self.recv_data[2:4]               #提取RTU帧中的功能码
+        self.length = self.recv_data[4:6]
         if self.function_code == define.READ_REGISTERS:         #判断功能码类别为读
+            if self.length == '02':
+                if self.CRC_checkout(self.recv_data[0:10]) != 1:  # 将除去crc校验位的部分拿去重新生成crc校验位
+                    print("crc error!")
+                    return 0  # 原crc校验位与重新生成crc校验位不符合，数据错误，丢弃
+                print("crc ok!")
+                self.data = self.recv_data[6:10]
+                # print(self.data)
+                if self.data=='00aa':
+                    print("Power OFF!")
+                    return 170
+                if self.data=='0055':
+                    print("Power ON!")
+                    return 85
+
+
             print("function read")
             if self.CRC_checkout(self.recv_data[0:14]) != 1:          #将除去crc校验位的部分拿去重新生成crc校验位
                 print("crc error!")
@@ -68,7 +84,7 @@ class Modbus_Rtu:
             print("从机地址"+self.addr)
 
             print("功能码" + self.function_code)
-            self.length = self.recv_data[4:6]
+
             print("数据长度"+self.length)
 
             self.data = self.recv_data[6:14]
@@ -114,13 +130,18 @@ class Modbus_Rtu:
 
             self.crc = self.recv_data[12:16]
             print("CRC校验" + self.crc)
+            if self.crc=='000c' and self.reg=='0010':
+                print("开关操作成功！")
+
             return 1
 
     def CRC_checkout(self,recv_data):
         self.Rtu_data=self.CRC_generate(recv_data)       #拿回crc生成值
         print(self.Rtu_data)
         if self.function_code == define.READ_REGISTERS:
-            self.crc = self.recv_data[14:18]                #获得接收文本中的crc校验位
+            if self.length == '02':
+                self.crc = self.recv_data[10:14]
+            else:self.crc = self.recv_data[14:18]                #获得接收文本中的crc校验位
             # print(self.Rtu_data)
             # print(self.crc)
             if self.Rtu_data == self.crc:               #对比重新生成的crc校验值和原来的校验值，相同返回1
@@ -176,20 +197,47 @@ def read_always_active_power(addr):
     Rtu.Assemble_rtu_read(addr, define.READ_REGISTERS, define.always_active_power, define.always_active_power_length)
     return Rtu.Analysis_rtu(uart.uart_recv())       #返回浮点型总有功电量数值
 
+def power_on(addr):
+    Rtu = Modbus_Rtu()
+    # 写表电源打开
+    Rtu.Assemble_rtu_write(addr, define.WRITE_REGISTERS, define.Power_operation,define.write_length_power, define.power_on)
+    Rtu.Analysis_rtu(uart.uart_recv())
+    return power_status(addr)                #返回开关状态
+
+def power_off(addr):
+    Rtu = Modbus_Rtu()
+    # 写表电源关闭
+    Rtu.Assemble_rtu_write(addr, define.WRITE_REGISTERS, define.Power_operation,define.write_length_power, define.power_off)
+    Rtu.Analysis_rtu(uart.uart_recv())
+    return power_status(addr)                 #返回开关状态
+
+def power_status(addr):
+    Rtu = Modbus_Rtu()
+    # 读取表的开关状态
+    Rtu.Assemble_rtu_read(addr, define.READ_REGISTERS, define.Power_status, define.Power_status_length)
+    return Rtu.Analysis_rtu(uart.uart_recv())
 
 if __name__ == '__main__':
-
+    # Rtu = Modbus_Rtu()
+    # # 读取表的功率
+    # Rtu.Assemble_rtu_read(define.ADDR01, define.READ_REGISTERS, define.Power_status, define.Power_status_length)
+    # Rtu.Analysis_rtu(uart.uart_recv())
     # 写1表电源打开
     # Rtu.Assemble_rtu_write(define.ADDR01, define.WRITE_REGISTERS, define.Power_operation,define.write_length_power, define.power_on)
     # 写1表电源关闭
     # Rtu.Assemble_rtu_write(define.ADDR02, define.WRITE_REGISTERS, define.Power_operation,define.write_length_power, define.power_off)
     # 接收串口数据进行解析RTU帧
     # Rtu.Analysis_rtu(uart.uart_recv())
-    folat=read_voltage(define.ADDR01)
+    # folat=read_voltage(define.ADDR01)
+    # print(folat)
+    # folat = read_current(define.ADDR01)
+    # print(folat)
+    # folat = read_Active_power(define.ADDR01)
+    # print(folat)
+    # folat = power_status(define.ADDR01)
+    # print(folat)
+    folat = power_on(define.ADDR01)
     print(folat)
-    folat = read_current(define.ADDR01)
-    print(folat)
-    folat = read_Active_power(define.ADDR01)
-    print(folat)
-    folat = read_always_active_power(define.ADDR01)
+    time.sleep(3)
+    folat = power_off(define.ADDR01)
     print(folat)

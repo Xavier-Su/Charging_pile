@@ -24,6 +24,7 @@ voltage_length='0002'
 current_length='0002'
 always_active_power_length='0002'
 Active_power_length='0002'
+Power_status_length='0001'
 
 
 #写数据长度
