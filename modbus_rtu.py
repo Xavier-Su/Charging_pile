@@ -29,7 +29,7 @@ class Modbus_Rtu:
         if self.function_code == define.READ_REGISTERS:             #判断是否为读电表数据
 
             Rtu_data = self.addr+self.function_code+self.reg+self.length
-            self.crc = Rtu.CRC_generate(Rtu_data)
+            self.crc = self.CRC_generate(Rtu_data)
             self.Rtu_all=self.addr+self.function_code+self.reg+self.length+self.crc
             print(self.Rtu_all)
             uart.uart_send(self.Rtu_all)
@@ -46,7 +46,7 @@ class Modbus_Rtu:
         if self.function_code == define.WRITE_REGISTERS:             #判断是否为写电表数据
 
             self.Rtu_data = self.addr + self.function_code + self.reg + self.length+self.data
-            self.crc = Rtu.CRC_generate(self.Rtu_data)
+            self.crc = self.CRC_generate(self.Rtu_data)
             self.Rtu_all = self.Rtu_data + self.crc
             print(self.Rtu_all)
             uart.uart_send(self.Rtu_all)
@@ -70,9 +70,28 @@ class Modbus_Rtu:
             print("功能码" + self.function_code)
             self.length = self.recv_data[4:6]
             print("数据长度"+self.length)
+
             self.data = self.recv_data[6:14]
-            float = struct.unpack('!f', bytes.fromhex(self.data))[0]            #16进制数据转浮点型数据
-            print("数据内容",float)
+            float = struct.unpack('!f', bytes.fromhex(self.data))[0]  # 16进制数据转浮点型数据
+            print("数据内容：", float)
+
+            if self.reg==define.voltage:
+                print("数据内容-电压：", float)
+                return float
+
+            if self.reg==define.current:
+                self.data = self.recv_data[6:14]
+                print("数据内容-电流：",float)
+                return float
+
+            if self.reg==define.Active_power:
+                print("数据内容-功率：", float)
+                return float
+
+            if self.reg==define.always_active_power:
+                self.data = self.recv_data[6:14]
+                print("数据内容-总有功电量：",float)
+                return float
 
             self.crc = self.recv_data[14:18]
             print("CRC校验"+self.crc)
@@ -133,20 +152,44 @@ class Modbus_Rtu:
         # print(str_crc)
         return str_crc[2:6].zfill(4)     #（[2:6]的意思是丢弃0x字符，只拿校验位数据） 一些结果以0开头，会自动把0给吞掉 .zfill(4)可以让结果以4位二进制的形式出现
 
+def read_voltage(addr):
+    Rtu = Modbus_Rtu()
+    # 读取表的电压
+    Rtu.Assemble_rtu_read(define.ADDR01,define.READ_REGISTERS,define.voltage,define.voltage_length)
+    return Rtu.Analysis_rtu(uart.uart_recv())
 
+def read_current(addr):
+    Rtu = Modbus_Rtu()
+    # 读取表的电流
+    Rtu.Assemble_rtu_read(define.ADDR01, define.READ_REGISTERS, define.current, define.current_length)
+    return Rtu.Analysis_rtu(uart.uart_recv())
+
+def read_Active_power(addr):
+    Rtu = Modbus_Rtu()
+    # 读取表的功率
+    Rtu.Assemble_rtu_read(define.ADDR01, define.READ_REGISTERS, define.Active_power, define.Active_power_length)
+    return Rtu.Analysis_rtu(uart.uart_recv())
+
+def read_always_active_power(addr):
+    Rtu = Modbus_Rtu()
+    # 读取表的总有功电量
+    Rtu.Assemble_rtu_read(define.ADDR01, define.READ_REGISTERS, define.always_active_power, define.always_active_power_length)
+    return Rtu.Analysis_rtu(uart.uart_recv())
 
 
 if __name__ == '__main__':
-    Rtu = Modbus_Rtu()
-    # 读取1表的电压
-    Rtu.Assemble_rtu_read(define.ADDR01,define.READ_REGISTERS,define.voltage,define.voltage_length)
-    # 读取2表的电流
-    Rtu.Assemble_rtu_read(define.ADDR01, define.READ_REGISTERS, define.current, define.current_length)
-    # 读取1表的总有功电量
-    Rtu.Assemble_rtu_read(define.ADDR01, define.READ_REGISTERS, define.always_active_power, define.read_length)
+
     # 写1表电源打开
-    Rtu.Assemble_rtu_write(define.ADDR01, define.WRITE_REGISTERS, define.Power_operation,define.write_length_power, define.power_on)
+    # Rtu.Assemble_rtu_write(define.ADDR01, define.WRITE_REGISTERS, define.Power_operation,define.write_length_power, define.power_on)
     # 写1表电源关闭
-    Rtu.Assemble_rtu_write(define.ADDR02, define.WRITE_REGISTERS, define.Power_operation,define.write_length_power, define.power_off)
+    # Rtu.Assemble_rtu_write(define.ADDR02, define.WRITE_REGISTERS, define.Power_operation,define.write_length_power, define.power_off)
     # 接收串口数据进行解析RTU帧
-    Rtu.Analysis_rtu(uart.uart_recv())
+    # Rtu.Analysis_rtu(uart.uart_recv())
+    folat=read_voltage(define.ADDR01)
+    print(folat)
+    folat = read_current(define.ADDR01)
+    print(folat)
+    folat = read_Active_power(define.ADDR01)
+    print(folat)
+    folat = read_always_active_power(define.ADDR01)
+    print(folat)

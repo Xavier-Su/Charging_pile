@@ -17,12 +17,14 @@ Power_operation ='0010'           # 拉合闸操作
 
 #各种可读写寄存器地址
 bps='0000'                        # 电压
-crc_type='0002'                   # 电压
-slave_addr='0008'                 # 电压
+crc_type='0002'                   # crc校验类型
+slave_addr='0008'                 # 修改从机地址
 #读取长度
 voltage_length='0002'
 current_length='0002'
-read_length='0002'
+always_active_power_length='0002'
+Active_power_length='0002'
+
 
 #写数据长度
 write_length='000204'
