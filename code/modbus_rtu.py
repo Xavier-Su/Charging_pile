@@ -69,10 +69,10 @@ class Modbus_Rtu:
                 # print(self.data)
                 if self.data=='00aa':
                     print("Power OFF!")
-                    return 170
+                    return 'OFF'
                 if self.data=='0055':
                     print("Power ON!")
-                    return 85
+                    return 'ON'
 
 
             print("function read")

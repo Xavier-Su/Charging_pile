@@ -5,21 +5,22 @@ import logging
 import socket
 
 
-GWIP = '192.168.20.11'
+# GWIP = '192.168.20.61'
 # GWIP = '192.168.20.132'
 # GWIP = '192.168.170.128'
-# GWIP = '192.168.137.1'
+GWIP = '192.168.31.248'
+# GWIP = '192.168.20.132'
 # mac = '01:01:20:22:44:7b'
 # mac= '00:12:4B:00:25:45:70:55'
-# mac = '01:01:20:22:55:4F'
-mac = '01:01:20:21:02:59'
+mac = '01:01:20:22:55:4F'
+# mac = '01:01:20:21:02:59'
 chargingpipe = 1
 TYPE = '32509'
 D0 = 0xff
-D1 = 1
+D1 = 0
 A0 = 0
 A1 = 0.8
-A2 = 121.32
+A2 = 140.32
 A3 = 40
 A4 = 20
 A5 = 0
@@ -40,20 +41,37 @@ port1 = 7003
 skgw = socket.socket(socket.AF_INET ,socket.SOCK_DGRAM)
 #server_addr = (GWIP, 7003)
 server_addr = (GWIP, port)
-server_addr1 = ("", port1)
+server_addr1 = ("192.168.20.130", port1)
 server_addr2 = (GWIP, port1)
 
-def recv_thread():
-    # skgw.bind(server_addr1)
-    skgw.connect(server_addr)
+host = socket.gethostname()
+print(host)
+port2 = 7003
+port3 = 8080
 
+def recv_thread():
+    HOST = '192.168.31.100'
+    PORT = 8080
+
+    sk = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sk.bind((HOST, PORT))
+    print("666")
+
+    # sk.bind((HOST, PORT))
+    # skgw.connect((GWIP,port2))
+    # skgw.connect(server_addr)
+    date1 = sk.recvfrom(1024)
+
+    print("5555", date1)
+    print("------------")
     while True:
         #print "000000"
-        date1, svaddr = skgw.recvfrom(1024)
+        # date1, svaddr = skgw.recvfrom(1024)
+        date1= sk.recvfrom(1024)
 
-
+        print("5555",date1)
         print ("------------")
-        print (svaddr)
+        # print (svaddr)
 
         if date1[17] == '=' and date1[0:17] == mac:
             date1 = date1[18:]
@@ -112,10 +130,10 @@ def send():
             sendmsg(dat)
             print ("ok")
         sendmsg("{D1=%d}" % D1)
-        time.sleep(1)
+        time.sleep(2)
 
 if __name__ == '__main__':
-
+    skgw = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     # thread.start_new_thread(send, ())
     while True:
 

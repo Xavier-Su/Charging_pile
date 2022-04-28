@@ -11,26 +11,12 @@ import traceback
 import define
 
 import modbus_rtu
+import web_zhiyun
 
 
-CUR_PATH = os.path.abspath(os.path.dirname(__file__))
-
-cfgFile = os.path.join(CUR_PATH, "ini.cfg")
 
 
-def loadCfg():
-    global GWIP, GPSPOS
-    try:
-        f = open(cfgFile)
-        t = f.read()
-        f.close()
-        cfg = json.loads(t)
-        GWIP = cfg["gateway"]
-        GPSPOS = cfg["gpspos"]
-        print('load cfg', GWIP, GPSPOS)
-    except:
-        GWIP = '127.0.0.1'
-        GPSPOS = "114.406319&30.462533"
+Web=web_zhiyun.zhiyun()
 
 
 class Node:
@@ -60,6 +46,7 @@ class Node:
         self.V1 = 0  # 储值电量
         # self.V2 = 0
         self.V3 = None  # gps 经度 纬度
+        self.status_str = ''
 
         # -----------------------------------------
         self.addr = addr  # 选择电表地址
@@ -77,12 +64,14 @@ class Node:
         # -----------------------------------------
 
         self.sim_A0 = 0  # 模拟电量
-        self.skgw = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.server_addr = (GWIP, 7003)
+        # self.sk = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # self.server_addr = (GWIP, 7003)
 
         # t = threading.Thread(target=self.__recv_thread)  # 打开来自网关的接收线程
-        # t.setDaemon(True)  # 设置守护线程
-        # t.start()
+
+        t = threading.Thread(target=self.__recv_thread)  # 打开来自网关的接收线程
+        t.setDaemon(True)  # 设置守护线程
+        t.start()
 
     def get_status(self):
         if self.STATUS_DEVICE_OFFLINE == self.status:
@@ -104,11 +93,12 @@ class Node:
     # 向网关发送数据 (sendto_cloud)
     #
     def sendmsg(self, dat):
-        self.server_addr = (GWIP, 7003)
+        # self.server_addr = (GWIP, 7003)
         msg1 = self.mac + "=" + dat
 
-        print(msg1, self.server_addr)
-        self.skgw.sendto(msg1.encode(),self.server_addr)
+        # print(msg1, self.server_addr)
+        Web.send_web(msg1.encode())
+        # self.sk.sendto(msg1.encode(),self.server_addr)
 
     #
     # 询问参数返回对应参数值 ( )
@@ -155,7 +145,7 @@ class Node:
 
         if tag == 'V3':
             if val == '?':
-                v3 = GPSPOS
+                v3 = Web.MASTER_GPS
                 if self.V3 != None:
                     v3 = self.V3
                 return "V3=%s" % v3
@@ -179,8 +169,15 @@ class Node:
     # 收到云端指令 然后执行到__proc返回对应值 并打包上到云端 (recv_switch)
     #
     def __recv_thread(self):
+        # self.sk.bind((HOST, PORT))
         while True:
-            dat, svaddr = self.skgw.recvfrom(256)
+            Web.recv_web()
+            dat=Web.recv_data
+            svaddr=Web.slave_addr
+            # dat, svaddr = self.sk.recvfrom(256)
+            print('-----------------------------')
+            print(dat)
+            print(svaddr)
             if dat[17] == '=' and dat[0:17] == self.mac:
                 dat = dat[18:]
                 if dat[0] == '{' and dat[-1] == '}':
@@ -218,12 +215,17 @@ class Node:
 
         if len(rep) > 0:
             dat = "{" + ",".join(rep) + "}"
+            # Web.send_web(dat.encode())
             self.sendmsg(dat)
 
     #
     # 上报当前开关状态 (report_switch)
     #
-    def reportD1(self):
+    def report_power_status(self,addr):
+        if modbus_rtu.power_status(addr)== 'OFF':
+            self.status = 0;
+        if modbus_rtu.power_status(addr) == 'ON':
+            self.status = 1;
         if self.status != self.STATUS_DEVICE_OFFLINE:
             self.sendmsg("{D1=%d}" % self.D1)
 
@@ -246,7 +248,7 @@ class Node:
                 reportD1Time = time.time() - 70  # 强制上报 60一次
             if time.time() - reportD1Time > 60:
                 reportD1Time = time.time()
-                self.reportD1()
+                self.report_power_status(define.ADDR01)
             time.sleep(2 )
 
 
@@ -254,7 +256,7 @@ class Node:
 
 
 if __name__ == '__main__':
-    loadCfg()
+    # loadCfg()
 
     addr = 1
     myMAC = '01:01:20:22:55:4F'
