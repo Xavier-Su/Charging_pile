@@ -59,7 +59,7 @@ class Modbus_Rtu:
         self.recv_data = recv_data
         self.function_code = self.recv_data[2:4]               #提取RTU帧中的功能码
         if self.function_code == define.READ_REGISTERS:         #判断功能码类别为读
-
+            print("function read")
             if self.CRC_checkout(self.recv_data[0:14]) != 1:          #将除去crc校验位的部分拿去重新生成crc校验位
                 print("crc error!")
                 return 0                              #原crc校验位与重新生成crc校验位不符合，数据错误，丢弃
@@ -79,7 +79,7 @@ class Modbus_Rtu:
             return 1
 
         if self.function_code == define.WRITE_REGISTERS:         #判断功能码类别为读
-
+            print("function write")
             if self.CRC_checkout(self.recv_data[0:12]) != 1:    #将除去crc校验位的部分拿去重新生成crc校验位
                 print("crc error!")
                 return 0  # 原crc校验位与重新生成crc校验位不符合，数据错误，丢弃
@@ -99,6 +99,7 @@ class Modbus_Rtu:
 
     def CRC_checkout(self,recv_data):
         self.Rtu_data=self.CRC_generate(recv_data)       #拿回crc生成值
+        print(self.Rtu_data)
         if self.function_code == define.READ_REGISTERS:
             self.crc = self.recv_data[14:18]                #获得接收文本中的crc校验位
             # print(self.Rtu_data)
@@ -115,8 +116,10 @@ class Modbus_Rtu:
 
 
     def CRC_generate(self,string):             #生成CRC校验位
-
+        # string='011000100001'
+        # print(string)
         data = bytearray.fromhex(string)
+        # print("data ",data)
         self.crc = 0xFFFF
         for pos in data:
             self.crc ^= pos
@@ -127,7 +130,8 @@ class Modbus_Rtu:
                 else:
                     self.crc >>= 1
         str_crc=hex(((self.crc & 0xff) << 8) + (self.crc >> 8))
-        return str_crc[2:6]     #（[2:6]的意思是丢弃0x字符，只拿校验位数据）
+        # print(str_crc)
+        return str_crc[2:6].zfill(4)     #（[2:6]的意思是丢弃0x字符，只拿校验位数据） 一些结果以0开头，会自动把0给吞掉 .zfill(4)可以让结果以4位二进制的形式出现
 
 
 
@@ -137,12 +141,12 @@ if __name__ == '__main__':
     # 读取1表的电压
     Rtu.Assemble_rtu_read(define.ADDR01,define.READ_REGISTERS,define.voltage,define.voltage_length)
     # 读取2表的电流
-    Rtu.Assemble_rtu_read(define.ADDR02, define.READ_REGISTERS, define.current, define.current_length)
+    Rtu.Assemble_rtu_read(define.ADDR01, define.READ_REGISTERS, define.current, define.current_length)
     # 读取1表的总有功电量
     Rtu.Assemble_rtu_read(define.ADDR01, define.READ_REGISTERS, define.always_active_power, define.read_length)
     # 写1表电源打开
     Rtu.Assemble_rtu_write(define.ADDR01, define.WRITE_REGISTERS, define.Power_operation,define.write_length_power, define.power_on)
     # 写1表电源关闭
-    Rtu.Assemble_rtu_write(define.ADDR01, define.WRITE_REGISTERS, define.Power_operation,define.write_length_power, define.power_off)
+    Rtu.Assemble_rtu_write(define.ADDR02, define.WRITE_REGISTERS, define.Power_operation,define.write_length_power, define.power_off)
     # 接收串口数据进行解析RTU帧
     Rtu.Analysis_rtu(uart.uart_recv())

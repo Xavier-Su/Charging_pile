@@ -36,7 +36,7 @@ def loadCfg():
 def read_reg_float(addr, reg):
     try:
         # fcntl.flock(master._serial.fd, fcntl.LOCK_EX)
-        resp = Modbus_Rtu.Assemble_rtu_read(addr, defines.READ_REGISTERS, reg, quantity_of_x=2)
+        resp = Modbus_Rtu.Assemble_rtu_read(addr, define.READ_REGISTERS, reg, quantity_of_x=2)
         # fcntl.flock(master._serial.fd, fcntl.LOCK_UN)
     except Exception as e:
         # fcntl.flock(master._serial.fd, fcntl.LOCK_UN)
