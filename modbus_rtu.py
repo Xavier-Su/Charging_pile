@@ -156,25 +156,25 @@ def read_voltage(addr):
     Rtu = Modbus_Rtu()
     # 读取表的电压
     Rtu.Assemble_rtu_read(addr,define.READ_REGISTERS,define.voltage,define.voltage_length)
-    return Rtu.Analysis_rtu(uart.uart_recv())
+    return Rtu.Analysis_rtu(uart.uart_recv())       #返回浮点型电压数值
 
 def read_current(addr):
     Rtu = Modbus_Rtu()
     # 读取表的电流
     Rtu.Assemble_rtu_read(addr, define.READ_REGISTERS, define.current, define.current_length)
-    return Rtu.Analysis_rtu(uart.uart_recv())
+    return Rtu.Analysis_rtu(uart.uart_recv())       #返回浮点型电流数值
 
 def read_Active_power(addr):
     Rtu = Modbus_Rtu()
     # 读取表的功率
     Rtu.Assemble_rtu_read(addr, define.READ_REGISTERS, define.Active_power, define.Active_power_length)
-    return Rtu.Analysis_rtu(uart.uart_recv())
+    return Rtu.Analysis_rtu(uart.uart_recv())       #返回浮点型功率数值
 
 def read_always_active_power(addr):
     Rtu = Modbus_Rtu()
     # 读取表的总有功电量
     Rtu.Assemble_rtu_read(addr, define.READ_REGISTERS, define.always_active_power, define.always_active_power_length)
-    return Rtu.Analysis_rtu(uart.uart_recv())
+    return Rtu.Analysis_rtu(uart.uart_recv())       #返回浮点型总有功电量数值
 
 
 if __name__ == '__main__':
