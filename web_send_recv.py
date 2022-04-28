@@ -8,6 +8,7 @@ import threading
 import time
 import socket
 import traceback
+import define
 
 import modbus_rtu
 
@@ -88,14 +89,16 @@ class Node:
             ''' 电表设备不在线，不上报 '''
             return
 
-        self.A1 = modbus_rtu.read_current(self.addr)
-        self.A2 = modbus_rtu.read_voltage(self.addr)
-        self.A3 = modbus_rtu.read_voltage(self.addr)
-        self.A4 = modbus_rtu.read_always_active_power(self.addr)
-        if self.status == self.STATUS_IDLE:  # 充电结束
-            self.A4 = self.charging_end_quantity - self.charging_start_quantity
-        else:
-            self.A4 = self.quantity - self.charging_start_quantity
+        self.A1 = round(modbus_rtu.read_current(define.ADDR01),2)
+        self.A2 = round(modbus_rtu.read_voltage(define.ADDR01),2)
+        self.A3 = round(modbus_rtu.read_Active_power(define.ADDR01),2)
+        self.A4 = round(modbus_rtu.read_always_active_power(define.ADDR01),2)
+
+        # modbus_rtu.read_voltage(define.ADDR01)
+        # if self.status == self.STATUS_IDLE:  # 充电结束
+        #     self.A4 = self.charging_end_quantity - self.charging_start_quantity
+        # else:
+        #     self.A4 = self.quantity - self.charging_start_quantity
 
     #
     # 向网关发送数据 (sendto_cloud)
@@ -103,9 +106,9 @@ class Node:
     def sendmsg(self, dat):
         self.server_addr = (GWIP, 7003)
         msg1 = self.mac + "=" + dat
-        msg1 = msg1.encode()
+
         print(msg1, self.server_addr)
-        self.skgw.sendto(msg1, self.server_addr)
+        self.skgw.sendto(msg1.encode(),self.server_addr)
 
     #
     # 询问参数返回对应参数值 ( )

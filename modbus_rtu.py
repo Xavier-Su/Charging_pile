@@ -32,7 +32,7 @@ class Modbus_Rtu:
             self.crc = self.CRC_generate(Rtu_data)
             self.Rtu_all=self.addr+self.function_code+self.reg+self.length+self.crc
             print(self.Rtu_all)
-            #uart.uart_send(self.Rtu_all)
+            uart.uart_send(self.Rtu_all)
             time.sleep(0.1)
             return 1
 
@@ -49,7 +49,7 @@ class Modbus_Rtu:
             self.crc = self.CRC_generate(self.Rtu_data)
             self.Rtu_all = self.Rtu_data + self.crc
             print(self.Rtu_all)
-            #uart.uart_send(self.Rtu_all)
+            uart.uart_send(self.Rtu_all)
             time.sleep(0.5)
             return 1
 
@@ -230,8 +230,8 @@ if __name__ == '__main__':
     # Rtu.Analysis_rtu(uart.uart_recv())
     # folat=read_voltage(define.ADDR01)
     # print(folat)
-    # folat = read_current(define.ADDR01)
-    # print(folat)
+    folat = read_current(define.ADDR01)
+    print(folat)
     # folat = read_Active_power(define.ADDR01)
     # print(folat)
     # folat = power_status(define.ADDR01)
