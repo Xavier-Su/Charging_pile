@@ -8,6 +8,7 @@ import threading
 import time
 import socket
 import traceback
+
 import modbus_rtu
 
 
@@ -25,13 +26,10 @@ def loadCfg():
         cfg = json.loads(t)
         GWIP = cfg["gateway"]
         GPSPOS = cfg["gpspos"]
-        print ('load cfg', GWIP, GPSPOS)
+        print('load cfg', GWIP, GPSPOS)
     except:
         GWIP = '127.0.0.1'
         GPSPOS = "114.406319&30.462533"
-
-
-
 
 
 class Node:
@@ -47,10 +45,15 @@ class Node:
         # self.TYPE = '32509'
         self.D0 = 0xff  # 主动上报使能
         self.D1 = 0  # 开关控制
-        self.A1 = 0  # 电流
-        self.A2 = 0  # 电压
-        self.A3 = 0  # 功率
-        self.A4 = 0  # 实时负载充电量
+        self.A0 = 0  # 开关控制
+        self.A1 = 2.20  # 电流
+        self.A2 = 50.00  #压
+        self.A3 = 153.22  # 功率
+        self.A4 = 65  # 实时负载充电量
+
+        self.A5 = 0
+        self.A6 = 0
+        self.A7 = 0
 
         self.V0 = 30  # 主动上报时间间隔
         self.V1 = 0  # 储值电量
@@ -84,15 +87,15 @@ class Node:
         if self.STATUS_DEVICE_OFFLINE == self.status:
             ''' 电表设备不在线，不上报 '''
             return
+
         self.A1 = modbus_rtu.read_current(self.addr)
         self.A2 = modbus_rtu.read_voltage(self.addr)
         self.A3 = modbus_rtu.read_voltage(self.addr)
         self.A4 = modbus_rtu.read_always_active_power(self.addr)
-
-        # if self.status == self.STATUS_IDLE:  # 充电结束
-        #     self.A4 = self.charging_end_quantity - self.charging_start_quantity
-        # else:
-        #     self.A4 = self.quantity - self.charging_start_quantity
+        if self.status == self.STATUS_IDLE:  # 充电结束
+            self.A4 = self.charging_end_quantity - self.charging_start_quantity
+        else:
+            self.A4 = self.quantity - self.charging_start_quantity
 
     #
     # 向网关发送数据 (sendto_cloud)
@@ -100,9 +103,9 @@ class Node:
     def sendmsg(self, dat):
         self.server_addr = (GWIP, 7003)
         msg1 = self.mac + "=" + dat
-        msg1.encode()
-        print(self.server_addr)
-        self.skgw.sendto(msg1, self.server_addr)  # 向上发送： 当前mac = dat 网关 端口
+        msg1 = msg1.encode()
+        print(msg1, self.server_addr)
+        self.skgw.sendto(msg1, self.server_addr)
 
     #
     # 询问参数返回对应参数值 ( )
@@ -160,8 +163,6 @@ class Node:
             return "D0=%d" % self.D0
         if tag == 'D1' and val == '?':
             return "D1=%d" % self.D1
-        if tag == 'A0' and val == '?':
-            return "A0=%.2f" % self.A0
         if tag == 'A1' and val == '?':
             return "A1=%.2f" % self.A1
         if tag == 'A2' and val == '?':
@@ -170,35 +171,30 @@ class Node:
             return "A3=%.2f" % self.A3
         if tag == 'A4' and val == '?':
             return "A4=%.2f" % self.A4
-        if tag == 'A6' and val == '?':
-            return "A6=%.0f" % self.A6
-        if tag == 'A7' and val == '?':
-            return "A7=%.0f" % self.A7
-        return None
 
     #
     # 收到云端指令 然后执行到__proc返回对应值 并打包上到云端 (recv_switch)
     #
-    # def __recv_thread(self):
-    #     while True:
-    #         dat, svaddr = self.skgw.recvfrom(256)
-    #         if dat[17] == '=' and dat[0:17] == self.mac:
-    #             dat = dat[18:]
-    #             if dat[0] == '{' and dat[-1] == '}':
-    #                 resp = []
-    #                 its = dat[1:-1].split(",")
-    #                 for it in its:
-    #                     kv = it.split("=")  # 询问值 kv {A0 = ?}
-    #                     if len(kv) == 2:
-    #                         try:
-    #                             ret = self.__proc(kv[0], kv[1])
-    #                             if ret != None:
-    #                                 resp.append(ret)
-    #                         except Exception as e:
-    #                             traceback.print_exc()
-    #                 if len(resp) > 0:
-    #                     dat = "{" + ",".join(resp) + "}"
-    #                     self.sendmsg(dat)
+    def __recv_thread(self):
+        while True:
+            dat, svaddr = self.skgw.recvfrom(256)
+            if dat[17] == '=' and dat[0:17] == self.mac:
+                dat = dat[18:]
+                if dat[0] == '{' and dat[-1] == '}':
+                    resp = []
+                    its = dat[1:-1].split(",")
+                    for it in its:
+                        kv = it.split("=")  # 询问值 kv {A0 = ?}
+                        if len(kv) == 2:
+                            try:
+                                ret = self.__proc(kv[0], kv[1])
+                                if ret != None:
+                                    resp.append(ret)
+                            except Exception as e:
+                                traceback.print_exc()
+                    if len(resp) > 0:
+                        dat = "{" + ",".join(resp) + "}"
+                        self.sendmsg(dat)
 
     #
     # 获取并上报当前全部参数 (report_status)
@@ -208,17 +204,14 @@ class Node:
             ''' 电表设备不在线，不上报 '''
             return
 
-
-
         rep = []
-        if self.A1 != None and self.D0 & 0x02:
-            rep.append("A1=%.2f" % self.A1)
-        if self.A2 != None and self.D0 & 0x04:
-            rep.append("A2=%.2f" % self.A2)
-        if self.A3 != None and self.D0 & 0x08:
-            rep.append("A3=%.2f" % self.A3)
-        if self.A4 != None and self.D0 & 0x10:
-            rep.append("A4=%.2f" % self.A4)
+        rep.append("A0=%.2f" % self.A0)
+        rep.append("A1=%.2f" % self.A1)
+        rep.append("A2=%.2f" % self.A2)
+        rep.append("A3=%.2f" % self.A3)
+        rep.append("A4=%.2f" % self.A4)
+        rep.append("A6=%.0f" % self.A6)
+        rep.append("A7=%.0f" % self.A7)
 
         if len(rep) > 0:
             dat = "{" + ",".join(rep) + "}"
@@ -239,6 +232,8 @@ class Node:
         lastReportTime = time.time()
         reportD1Time = time.time()
         while True:
+            self.report()
+            self.get_status()
             if time.time() - lastReportTime > self.V0:
                 lastReportTime = time.time()
                 self.report()
@@ -249,9 +244,7 @@ class Node:
             if time.time() - reportD1Time > 60:
                 reportD1Time = time.time()
                 self.reportD1()
-            time.sleep(1)
-
-
+            time.sleep(2 )
 
 
 # ----------------------------------------------
@@ -261,5 +254,5 @@ if __name__ == '__main__':
     loadCfg()
 
     addr = 1
-    myMAC = '01:01:20:21:02:59'
+    myMAC = '01:01:20:22:55:4F'
     Node(myMAC, addr).run()
