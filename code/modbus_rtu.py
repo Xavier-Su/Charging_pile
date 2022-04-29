@@ -28,7 +28,7 @@ class Modbus_Rtu:
 
         if self.function_code == define.READ_REGISTERS:             #判断是否为读电表数据
 
-            Rtu_data = self.addr+self.function_code+self.reg+self.length
+            self.Rtu_data = self.addr+self.function_code+self.reg+self.length
             self.crc = self.CRC_generate(Rtu_data)
             self.Rtu_all=self.addr+self.function_code+self.reg+self.length+self.crc
             print(self.Rtu_all)
