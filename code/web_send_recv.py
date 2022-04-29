@@ -32,7 +32,7 @@ class Node:
         # self.TYPE = '32509'
         self.D0 = 0xff  # 主动上报使能
         self.D1 = 0  # 开关控制
-        self.A0 = 0  # 开关控制
+        self.A0 = 0.02  # 开关控制
         self.A1 = 2.20  # 电流
         self.A2 = 50.00  #压
         self.A3 = 153.22  # 功率
@@ -95,8 +95,7 @@ class Node:
     def sendmsg(self, dat):
         # self.server_addr = (GWIP, 7003)
         msg1 = self.mac + "=" + dat
-
-        # print(msg1, self.server_addr)
+        print(msg1)
         Web.send_web(msg1.encode())
         # self.sk.sendto(msg1.encode(),self.server_addr)
 
@@ -221,13 +220,7 @@ class Node:
     #
     # 上报当前开关状态 (report_switch)
     #
-    def report_power_status(self,addr):
-        if modbus_rtu.power_status(addr)== 'OFF':
-            self.status = 0;
-        if modbus_rtu.power_status(addr) == 'ON':
-            self.status = 1;
-        if self.status != self.STATUS_DEVICE_OFFLINE:
-            self.sendmsg("{D1=%d}" % self.D1)
+
 
     #
     # 初次运行程序（循环）
@@ -251,6 +244,18 @@ class Node:
                 self.report_power_status(define.ADDR01)
             time.sleep(2 )
 
+def report_power_status(mac,addr):
+    status = -1
+    if modbus_rtu.power_status(addr)== 'OFF':
+        status = 0
+    if modbus_rtu.power_status(addr) == 'ON':
+        status = 1
+    if status != -1:
+        msg1 = mac + "=" + "{D1=%d}" % status
+        print(msg1)
+        Web.send_web(msg1.encode())
+    else:print("report power error")
+
 
 # ----------------------------------------------
 
@@ -259,5 +264,5 @@ if __name__ == '__main__':
     # loadCfg()
 
     addr = 1
-    myMAC = '01:01:20:22:55:4F'
+    myMAC = '02:01:20:22:55:4F'
     Node(myMAC, addr).run()

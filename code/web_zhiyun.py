@@ -24,7 +24,7 @@ class zhiyun():
     GW_HOST = GWIP
     GW_PORT = 7003
 
-    MASTER_HOST = '192.168.31.100'
+    MASTER_HOST = '192.168.223.242'
     MASTER_PORT = 8080
     MASTER_GPS = GPSPOS
     D1 = ''
@@ -36,6 +36,7 @@ class zhiyun():
     # zhiyun_gw=''
     def __init__(self):
         D1 = ''
+
         # zhiyun_gw = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 
@@ -46,7 +47,7 @@ class zhiyun():
 
         # while True:
         self.recv_data,self.slave_addr=self.zhiyun_gw.recvfrom(256)
-        # print('recv_data, slave_addr')
-        # print(self.recv_data,self.slave_addr)
+        print('recv_data, slave_addr')
+        print(self.recv_data,self.slave_addr)
 
 
