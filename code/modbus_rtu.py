@@ -29,7 +29,7 @@ class Modbus_Rtu:
         if self.function_code == define.READ_REGISTERS:             #判断是否为读电表数据
 
             self.Rtu_data = self.addr+self.function_code+self.reg+self.length
-            self.crc = self.CRC_generate(Rtu_data)
+            self.crc = self.CRC_generate(self.Rtu_data)
             self.Rtu_all=self.addr+self.function_code+self.reg+self.length+self.crc
             print(self.Rtu_all)
             uart.uart_send(self.Rtu_all)
