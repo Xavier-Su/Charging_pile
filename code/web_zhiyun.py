@@ -24,7 +24,7 @@ class zhiyun():
     GW_HOST = GWIP
     GW_PORT = 7003
 
-    MASTER_HOST = '192.168.31.100'
+    MASTER_HOST = '192.168.20.132'
     MASTER_PORT = 8080
     MASTER_GPS = GPSPOS
     D1 = ''
