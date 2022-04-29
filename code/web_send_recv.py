@@ -13,6 +13,7 @@ import define
 import modbus_rtu
 import web_zhiyun
 
+Web = web_zhiyun.zhiyun()
 
 
 
@@ -79,7 +80,7 @@ class Node:
             return
 
         self.A1 = round(modbus_rtu.read_current(define.ADDR01),2)
-        self.A2 = round(modbus_rtu.read_voltage(define.ADDR01),2)
+        # self.A2 = round(modbus_rtu.read_voltage(define.ADDR01),2)
         self.A3 = round(modbus_rtu.read_Active_power(define.ADDR01),2)
         self.A4 = round(modbus_rtu.read_always_active_power(define.ADDR01),2)
 
@@ -256,7 +257,25 @@ class Node:
 
 
 if __name__ == '__main__':
-    # loadCfg()
+    # addr = 0
+    # if len(sys.argv) > 1:
+    #     addr = int(sys.argv[1])
+    # mac = None
+    # for line in os.popen("ip addr show enp0s3f0"):  # loong edu
+    #     if "link/ether" in line:
+    #         mac = line.split()[1].upper()
+    #         break
+    # if mac == None:
+    #     for line in os.popen("ifconfig eth0"):  # 9x25
+    #         if "HWaddr" in line:
+    #             mac = line.split()[4].upper()
+    #             break
+    # if mac == None:
+    #     logging.error("get mac addr!")
+    #     sys.exit(0)
+    #
+    # myMAC = "%02d" % addr
+    # myMAC += mac[2:]
 
     addr = 1
     myMAC = '01:01:20:22:55:4F'
