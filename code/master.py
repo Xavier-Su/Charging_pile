@@ -7,8 +7,9 @@ import time
 Web = web_zhiyun.zhiyun()
 
 
-def Analysis_command(Addr, command_text, command_value):
+def Analysis_command(Addr, command_text, command_value,mac):
     D1 = 0
+    myMAC=mac
     MAC = Addr + myMAC[2:17]
     if command_text == 'OD1' and command_value == '1':
         ON = modbus_rtu.power_on(Addr)
@@ -27,7 +28,8 @@ def Analysis_command(Addr, command_text, command_value):
             print("power off ok")
 
 
-def recv_command(gw):
+def recv_command(gw,mac):
+    myMAC=mac
     recv_data, slave_addr = gw.zhiyun_gw.recvfrom(256)
     print('recv_data, slave_addr')
     print(recv_data, slave_addr)
@@ -47,21 +49,22 @@ def recv_command(gw):
                     if len(command) == 2:
                         command_text = command[0]
                         command_value = command[1]
-                        Analysis_command(Addr, command_text, command_value)
+                        Analysis_command(Addr, command_text, command_value,mac)
                         print(command_text, command_value)
     except(IndexError):
         print("发现异常！跳过本次循环。")
         pass
 
 
-def auto_control(mac):
-    gw = web_zhiyun.zhiyun()
-    mac = mac
-    string = mac + '={A0=0.00,A1=0.00,A2=00.00,A3=000.22,A4=00.00,A6=0,A7=0}'
-    gw.send_web(string.encode())
+def auto_control(Web,mac):
     while True:
+        gw = Web
+        mac = mac
+        string = mac + '={A0=0.00,A1=0.00,A2=00.00,A3=000.22,A4=00.00,A6=0,A7=0}'
+        gw.send_web(string.encode())
+        # while True:
         print('---------------------------------------------')
-        recv_command(gw)
+        recv_command(gw,mac)
         # time.sleep(0.1)
 
 
@@ -84,6 +87,7 @@ class Master:
     STATUS_CHARGING = 1
 
     def __init__(self, mac, addr):
+        print("==================")
         self.mac = mac
         self.addr = addr
 
@@ -100,16 +104,23 @@ class Master:
         self.A6 = 0  # 充电开始时间
         self.A7 = 0  # 充电结束时间
 
-        self.V0 = 30  # 主动上报时间间隔
+        self.V0 = 10  # 主动上报时间间隔
         self.V1 = 0  # 储值电量
         # self.V2 = 0
         self.V3 = None  # gps 经度 纬度
 
-        modbus_rtu.power_on(self.addr)
+
+        modbus_rtu.power_on(str(self.addr))
         modbus_rtu.power_off(self.addr)
         report_power_status(self.mac, self.addr)
         self.get_status()
+        print(self.A1,self.A2)
         self.report()
+
+
+        t2 = threading.Thread(target=auto_control(Web, myMAC))  # 打开来自网关的接收线程
+        t2.setDaemon(True)  # 设置守护线程
+        t2.start()
 
     def set_addr(self, addr):
         self.addr = addr
@@ -152,24 +163,32 @@ class Master:
         self.report()
         lastReportTime = time.time()
         reportD1Time = time.time()
-        while True:
-            if time.time() - lastReportTime > self.V0:
-                lastReportTime = time.time()
-                self.get_status()
-                self.report()
-            # 检测充电是否结束
-            if (self.D1 & 0x01) and self.STATUS_IDLE == modbus_rtu.power_status(self.addr):
-                self.D1 &= 0xFE  # 关闭电源
-                reportD1Time = time.time() - 70  # 强制上报 60一次
-            if time.time() - reportD1Time > 60:
-                reportD1Time = time.time()
-                report_power_status(self.mac, self.addr)
-            time.sleep(1)
+        print("++++++++++")
+        try:
+
+            while True:
+                print("before get get_status")
+                if time.time() - lastReportTime > self.V0:
+                    lastReportTime = time.time()
+                    print("after get get get_status")
+                    self.get_status()
+                    self.report()
+                # 检测充电是否结束
+                if (self.D1 & 0x01) and self.STATUS_IDLE == modbus_rtu.power_status(self.addr):
+                    self.D1 &= 0xFE  # 关闭电源
+                    reportD1Time = time.time() - 70  # 强制上报 60一次
+                if time.time() - reportD1Time > 60:
+                    reportD1Time = time.time()
+                    report_power_status(self.mac, self.addr)
+                time.sleep(1)
+
+        except(TypeError):
+            pass
 
 
 if __name__ == '__main__':
-    swAddr = 1
-    myMAC = '02:01:20:22:55:4F'
+    swAddr = '01'
+    myMAC = '01:01:20:22:55:4F'
     # mac = None
     # for line in os.popen("ip addr show enp0s3f0"):  # loong edu
     #     if "link/ether" in line:
@@ -186,9 +205,11 @@ if __name__ == '__main__':
     #
     # myMAC = "%02d" % addr
     # myMAC += mac[2:]
-    t = threading.Thread(target=auto_control(myMAC))  # 打开来自网关的接收线程
-    t.setDaemon(True)  # 设置守护线程
-    t.start()
+
+
+    # t1 = threading.Thread(target=Master(myMAC, swAddr).run())  # 打开来自网关的接收线程
+    # t1.setDaemon(True)  # 设置守护线程
+    # t1.start()
 
     Master(myMAC, swAddr).run()
     # master = Master(myMAC, swAddr).run()
@@ -199,3 +220,4 @@ if __name__ == '__main__':
     #         swAddr = 1
     #
     #     set_addr(swAddr)
+
