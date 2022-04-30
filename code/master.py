@@ -91,7 +91,6 @@ class Master:
         print("==================")
         self.mac = mac
         self.addr = addr
-
         self.D0 = 0xff  # 主动上报使能
         self.D1 = 0  # 开关控制
 
