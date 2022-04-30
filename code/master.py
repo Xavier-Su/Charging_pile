@@ -90,7 +90,6 @@ class Master:
         print("==================")
         self.mac = mac
         self.addr = addr
-
         self.D0 = 0xff  # 主动上报使能
         self.D1 = 0  # 开关控制
 
@@ -167,27 +166,31 @@ class Master:
         try:
 
             while True:
-                print("before get get_status")
-                if time.time() - lastReportTime > self.V0:
-                    lastReportTime = time.time()
-                    print("after get get get_status")
-                    self.get_status()
-                    self.report()
-                # 检测充电是否结束
-                if (self.D1 & 0x01) and self.STATUS_IDLE == modbus_rtu.power_status(self.addr):
-                    self.D1 &= 0xFE  # 关闭电源
-                    reportD1Time = time.time() - 70  # 强制上报 60一次
-                if time.time() - reportD1Time > 60:
-                    reportD1Time = time.time()
-                    report_power_status(self.mac, self.addr)
-                time.sleep(1)
+                for list in define.addr_list:
+                    self.addr = list
+                    print("before get get_status")
+                    if time.time() - lastReportTime > self.V0:
+                        lastReportTime = time.time()
+                        print("after get get get_status")
+                        self.get_status()
+                        self.report()
+                    # 检测充电是否结束
+                    if (self.D1 & 0x01) and self.STATUS_IDLE == modbus_rtu.power_status(self.addr):
+                        self.D1 &= 0xFE  # 关闭电源
+                        reportD1Time = time.time() - 70  # 强制上报 60一次
+                    if time.time() - reportD1Time > 60:
+                        reportD1Time = time.time()
+                        report_power_status(self.mac, self.addr)
+
+
+                    time.sleep(0.5)
 
         except(TypeError):
             pass
 
 
 if __name__ == '__main__':
-    swAddr = '01'
+    swAddr = define.ADDR01
     myMAC = '01:01:20:22:55:4F'
     # mac = None
     # for line in os.popen("ip addr show enp0s3f0"):  # loong edu
