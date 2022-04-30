@@ -12,8 +12,9 @@ import define
 
 import modbus_rtu
 import web_zhiyun
+import master
 
-Web = web_zhiyun.zhiyun()
+# Web = web_zhiyun.zhiyun()
 
 
 
@@ -43,7 +44,7 @@ class Node:
         self.A6 = 0
         self.A7 = 0
 
-        self.V0 = 30  # 主动上报时间间隔
+        self.V0 = 10  # 主动上报时间间隔
         self.V1 = 0  # 储值电量
         # self.V2 = 0
         self.V3 = None  # gps 经度 纬度
@@ -171,30 +172,31 @@ class Node:
     def __recv_thread(self):
         # self.sk.bind((HOST, PORT))
         while True:
-            Web.recv_web()
+            # Web.recv_web()
+            master.auto_control(Web,'01:01:20:22:55:4F')
             dat=Web.recv_data
             svaddr=Web.slave_addr
             # dat, svaddr = self.sk.recvfrom(256)
             print('-----------------------------')
             print(dat)
             print(svaddr)
-            if dat[17] == '=' and dat[0:17] == self.mac:
-                dat = dat[18:]
-                if dat[0] == '{' and dat[-1] == '}':
-                    resp = []
-                    its = dat[1:-1].split(",")
-                    for it in its:
-                        kv = it.split("=")  # 询问值 kv {A0 = ?}
-                        if len(kv) == 2:
-                            try:
-                                ret = self.__proc(kv[0], kv[1])
-                                if ret != None:
-                                    resp.append(ret)
-                            except Exception as e:
-                                traceback.print_exc()
-                    if len(resp) > 0:
-                        dat = "{" + ",".join(resp) + "}"
-                        self.sendmsg(dat)
+            # if dat[17] == '=' and dat[0:17] == self.mac:
+            #     dat = dat[18:]
+            #     if dat[0] == '{' and dat[-1] == '}':
+            #         resp = []
+            #         its = dat[1:-1].split(",")
+            #         for it in its:
+            #             kv = it.split("=")  # 询问值 kv {A0 = ?}
+            #             if len(kv) == 2:
+            #                 try:
+            #                     ret = self.__proc(kv[0], kv[1])
+            #                     if ret != None:
+            #                         resp.append(ret)
+            #                 except Exception as e:
+            #                     traceback.print_exc()
+            #         if len(resp) > 0:
+            #             dat = "{" + ",".join(resp) + "}"
+            #             self.sendmsg(dat)
 
     #
     # 获取并上报当前全部参数 (report_status)
@@ -231,10 +233,9 @@ class Node:
         lastReportTime = time.time()
         reportD1Time = time.time()
         while True:
-            self.report()
-            self.get_status()
             if time.time() - lastReportTime > self.V0:
                 lastReportTime = time.time()
+                self.get_status()
                 self.report()
             # 检测充电是否结束
             if (self.D1 & 0x01) and self.STATUS_IDLE == self.status:
@@ -283,5 +284,5 @@ if __name__ == '__main__':
     # myMAC += mac[2:]
 
     addr = 1
-    myMAC = '02:01:20:22:55:4F'
+    myMAC = '01:01:20:22:55:4F'
     Node(myMAC, addr).run()
