@@ -1,0 +1,15 @@
+[Unit]
+Description=cdz
+
+
+[Service]
+Type=forking
+WorkingDirectory=/home/loongson/Charging_pile/code
+ExecStart=/home/xavier/Charging_pile/code/start1.sh
+Restart=always
+TimeoutStartSec=0
+#Restarart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+
