@@ -6,7 +6,7 @@ import time
 import web_send_recv
 
 Web = web_zhiyun.zhiyun()
-
+lock=1
 
 def Analysis_command(Addr, command_text, command_value,mac):
     D1 = 0
@@ -31,38 +31,44 @@ def Analysis_command(Addr, command_text, command_value,mac):
 
 def recv_command(gw,mac):
     myMAC=mac
+    global lock
     recv_data, slave_addr = gw.zhiyun_gw.recvfrom(256)
-    print('recv_data, slave_addr')
-    print(recv_data, slave_addr)
-    recv_data = recv_data.decode()
-    Addr = recv_data[0:2]
-    print(recv_data, Addr)
-    try:
-        if recv_data[17] == '=' and recv_data[2:17] == myMAC[2:17]:
-            recv_data = recv_data[18:]
-            print(recv_data)
-            if recv_data[0] == '{' and recv_data[-1] == '}':
-                resp = []
-                order = recv_data[1:-1].split(",")
-                print(order)
-                for i in order:
-                    command = i.split("=")  #
-                    if len(command) == 2:
-                        command_text = command[0]
-                        command_value = command[1]
-                        Analysis_command(Addr, command_text, command_value,mac)
-                        print(command_text, command_value)
-    except(IndexError):
-        print("发现异常！跳过本次循环。")
-        pass
+    if lock == 1:
+        lock =0
+        print('recv data and slave addr ok!')
+        # print(recv_data, slave_addr)
+        recv_data = recv_data.decode()
+        Addr = recv_data[0:2]
+        # print(recv_data, Addr)
+        try:
+            if recv_data[17] == '=' and recv_data[2:17] == myMAC[2:17]:
+                recv_data = recv_data[18:]
+                # print(recv_data)
+                if recv_data[0] == '{' and recv_data[-1] == '}':
+                    resp = []
+                    order = recv_data[1:-1].split(",")
+                    # print(order)
+                    for i in order:
+                        command = i.split("=")  #
+                        if len(command) == 2:
+                            command_text = command[0]
+                            command_value = command[1]
+                            Analysis_command(Addr, command_text, command_value,mac)
+                            # print(command_text, command_value)
+            lock=1
+        except(IndexError):
+            print("发现异常！跳过本次循环。")
+            pass
 
 
 def auto_control(Web,mac):
+    global lock
+
     while True:
         gw = Web
         mac = mac
-        string = mac + '={A0=0.00,A1=0.00,A2=00.00,A3=000.22,A4=00.00,A6=0,A7=0}'
-        gw.send_web(string.encode())
+        # string = mac + '={A0=0.00,A1=0.00,A2=00.00,A3=000.22,A4=00.00,A6=0,A7=0}'
+        # gw.send_web(string.encode())
         # while True:
         print('---------------------------------------------')
         recv_command(gw,mac)
@@ -95,7 +101,7 @@ class Master:
         self.D1 = 0  # 开关控制
 
         self.A0 = 0.01  # 历史用电量
-        self.A1 = 0.2  # 电流
+        self.A1 = 0.20  # 电流
         self.A2 = 180.56  # 电压
         self.A3 = 4022.33  # 功率
         self.A4 = 110.03  # 实时负载充电
@@ -109,13 +115,15 @@ class Master:
         # self.V2 = 0
         self.V3 = None  # gps 经度 纬度
 
+        for iter in define.addr_list:
+            self.addr = iter
+            self.mac = iter + self.mac[2:]
+            modbus_rtu.power_on(str(self.addr))
+            modbus_rtu.power_off(self.addr)
+            report_power_status(self.mac, self.addr)
+            self.get_status()
+            self.report()
 
-        modbus_rtu.power_on(str(self.addr))
-        modbus_rtu.power_off(self.addr)
-        report_power_status(self.mac, self.addr)
-        self.get_status()
-        print(self.A1,self.A2)
-        self.report()
 
         t = threading.Thread(target=auto_control,args=(Web,myMAC))  # 打开来自网关的接收线程
         t.setDaemon(True)  # 设置守护线程
@@ -127,7 +135,7 @@ class Master:
 
     def sendmsg(self, dat):
         msg = self.mac + "=" + dat
-        print(msg)
+        # print(msg)
         Web.send_web(msg.encode())
 
     def get_status(self):
@@ -135,12 +143,21 @@ class Master:
             ''' 电表设备不在线，不上报 '''  # !!!!!!!!!! 可能需要向上报问题
             return
 
-        self.A1 = round(modbus_rtu.read_current(define.ADDR01), 2)  # ！！存在使用过程中会报错的问题
-        self.A2 = round(modbus_rtu.read_voltage(define.ADDR01), 2)
-        self.A3 = round(modbus_rtu.read_Active_power(define.ADDR01), 2)
-        self.A4 = round(modbus_rtu.read_always_active_power(define.ADDR01), 2)
+        # self.A1 = round(modbus_rtu.read_current(self.addr), 2)  # ！！存在使用过程中会报错的问题
+        # self.A2 = round(modbus_rtu.read_voltage(self.addr), 2)
+        # self.A3 = round(modbus_rtu.read_Active_power(self.addr), 2)
+        # self.A4 = round(modbus_rtu.read_always_active_power(self.addr), 2)
+
         # print('{:.1f}'.format(3.1415926))
         # print('{:.4f}'.format(3.14))  # .后接保留小数点位数
+
+        try:
+            self.A1 = float("%.2f" %(modbus_rtu.read_current(self.addr)))  # ！！存在使用过程中会报错的问题
+            self.A2 = float("%.2f" %(modbus_rtu.read_voltage(self.addr)))
+            self.A3 = float("%.2f" %(modbus_rtu.read_Active_power(self.addr)))
+            self.A4 = float("%.2f" %(modbus_rtu.read_always_active_power(self.addr)))
+        except(TypeError):
+            pass
 
     def report(self):
         if self.STATUS_DEVICE_OFFLINE == modbus_rtu.power_status(self.addr):
@@ -161,29 +178,41 @@ class Master:
 
     def run(self):
         # self.report()
+
         lastReportTime = time.time()
         reportD1Time = time.time()
         print("+++++-------+++++")
         try:
+            global lock
 
             while True:
-                print("before get get_status")
-                if time.time() - lastReportTime > self.V0:
-                    lastReportTime = time.time()
-                    print("after get get get_status")
-                    self.get_status()
-                    self.report()
-                # 检测充电是否结束
-                if (self.D1 & 0x01) and self.STATUS_IDLE == modbus_rtu.power_status(self.addr):
-                    self.D1 &= 0xFE  # 关闭电源
-                    reportD1Time = time.time() - 70  # 强制上报 60一次
-                if time.time() - reportD1Time > 60:
-                    reportD1Time = time.time()
-                    report_power_status(self.mac, self.addr)
-                time.sleep(1)
+                if lock == 1:
+                    lock = 0
+                    for iter in define.addr_list:
+                        self.addr = iter
+                        self.mac = iter + self.mac[2:]
+                        self.get_status()
+                        self.report()
+
+                # print("before get get_status")
+                # if time.time() - lastReportTime > self.V0:
+                #     lastReportTime = time.time()
+                #     print("after get get get_status")
+                #     self.get_status()
+                #     self.report()
+                # # 检测充电是否结束
+                # if (self.D1 & 0x01) and self.STATUS_IDLE == modbus_rtu.power_status(self.addr):
+                #     self.D1 &= 0xFE  # 关闭电源
+                #     reportD1Time = time.time() - 70  # 强制上报 60一次
+                # if time.time() - reportD1Time > 60:
+                #     reportD1Time = time.time()
+                #     report_power_status(self.mac, self.addr)
+                    lock = 1
+                    time.sleep(self.V0)
 
         except(TypeError):
-            pass
+            print("TypeError pass ")
+            pass 
 
 
 if __name__ == '__main__':
@@ -212,6 +241,9 @@ if __name__ == '__main__':
     # t1.start()
 
     Master(myMAC, swAddr).run()
+    # Master(myMAC, swAddr)
+    # while True:
+    #     time.sleep(5)
     # master = Master(myMAC, swAddr).run()
     # while True:
     #     if swAddr is 1:

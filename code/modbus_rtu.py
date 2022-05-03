@@ -31,7 +31,7 @@ class Modbus_Rtu:
             self.Rtu_data = self.addr+self.function_code+self.reg+self.length
             self.crc = self.CRC_generate(self.Rtu_data)
             self.Rtu_all=self.addr+self.function_code+self.reg+self.length+self.crc
-            print(self.Rtu_all)
+            # print(self.Rtu_all)
             uart.uart_send(self.Rtu_all)
             time.sleep(0.1)
             return 1
@@ -48,7 +48,7 @@ class Modbus_Rtu:
             self.Rtu_data = self.addr + self.function_code + self.reg + self.length+self.data
             self.crc = self.CRC_generate(self.Rtu_data)
             self.Rtu_all = self.Rtu_data + self.crc
-            print(self.Rtu_all)
+            # print(self.Rtu_all)
             uart.uart_send(self.Rtu_all)
             time.sleep(0.5)
             return 1
@@ -62,9 +62,9 @@ class Modbus_Rtu:
         if self.function_code == define.READ_REGISTERS:         #判断功能码类别为读
             if self.length == '02':
                 if self.CRC_checkout(self.recv_data[0:10]) != 1:  # 将除去crc校验位的部分拿去重新生成crc校验位
-                    print("crc error!")
-                    return 0  # 原crc校验位与重新生成crc校验位不符合，数据错误，丢弃
-                print("crc ok!")
+                    print("read power crc error!")
+                    return -1  # 原crc校验位与重新生成crc校验位不符合，数据错误，丢弃
+                # print("crc ok!")
                 self.data = self.recv_data[6:10]
                 # print(self.data)
                 if self.data=='00aa':
@@ -75,21 +75,21 @@ class Modbus_Rtu:
                     return 'ON'
 
 
-            print("function read")
+            # print("function read")
             if self.CRC_checkout(self.recv_data[0:14]) != 1:          #将除去crc校验位的部分拿去重新生成crc校验位
-                print("crc error!")
-                return 0                              #原crc校验位与重新生成crc校验位不符合，数据错误，丢弃
-            print("crc ok!")
+                print("read crc error!")
+                return -1                              #原crc校验位与重新生成crc校验位不符合，数据错误，丢弃
+            # print("crc ok!")
             self.addr = self.recv_data[0:2]
             print("从机地址"+self.addr)
 
-            print("功能码" + self.function_code)
+            # print("功能码" + self.function_code)
 
-            print("数据长度"+self.length)
+            # print("数据长度"+self.length)
 
             self.data = self.recv_data[6:14]
             float = struct.unpack('!f', bytes.fromhex(self.data))[0]  # 16进制数据转浮点型数据
-            print("数据内容：", float)
+            # print("数据内容：", float)
 
             if self.reg==define.voltage:
                 print("数据内容-电压：", float)
@@ -110,26 +110,26 @@ class Modbus_Rtu:
                 return float
 
             self.crc = self.recv_data[14:18]
-            print("CRC校验"+self.crc)
+            # print("CRC校验"+self.crc)
             return 1
 
         if self.function_code == define.WRITE_REGISTERS:         #判断功能码类别为读
-            print("function write")
+            # print("function write")
             if self.CRC_checkout(self.recv_data[0:12]) != 1:    #将除去crc校验位的部分拿去重新生成crc校验位
-                print("crc error!")
-                return 0  # 原crc校验位与重新生成crc校验位不符合，数据错误，丢弃
-            print("crc ok!")
+                print("write crc error!")
+                return -1  # 原crc校验位与重新生成crc校验位不符合，数据错误，丢弃
+            # print("crc ok!")
             self.addr = self.recv_data[0:2]
             print("从机地址" + self.addr)
 
-            print("功能码" + self.function_code)
+            # print("功能码" + self.function_code)
             self.reg = self.recv_data[4:8]
-            print("寄存器地址" + self.reg)
+            # print("寄存器地址" + self.reg)
             self.length = self.recv_data[8:12]
-            print("数据长度", self.length)
+            # print("数据长度", self.length)
 
             self.crc = self.recv_data[12:16]
-            print("CRC校验" + self.crc)
+            # print("CRC校验" + self.crc)
             if self.crc=='000c' and self.reg=='0010':
                 print("开关操作成功！")
 
@@ -137,7 +137,7 @@ class Modbus_Rtu:
 
     def CRC_checkout(self,recv_data):
         self.Rtu_data=self.CRC_generate(recv_data)       #拿回crc生成值
-        print(self.Rtu_data)
+        # print(self.Rtu_data)
         if self.function_code == define.READ_REGISTERS:
             if self.length == '02':
                 self.crc = self.recv_data[10:14]

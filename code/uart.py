@@ -5,7 +5,7 @@ import serial
 
 
 # 端口：CNU； Linux上的/dev /ttyUSB0等； windows上的COM3等
-portx = "COM9"
+portx = "COM5"
 # 波特率，标准值有：50,75,110,134,150,200,300,600,1200,1800,2400,4800,9600,19200,38400,57600,115200
 bps = 9600
 # 超时设置，None：永远等待操作；
@@ -24,12 +24,12 @@ def uart_send(rtu_all):
         # ser.write(b'\xFE\xFE\xFE')
         # 但是上面的方法不够优雅，需要自己添加\x，非常麻烦，于是使用下面这个方法
         d = bytes.fromhex(rtu_all)
-        print(d)
+        # print(d)
         # 串口发送数据
         result = ser.write(d)
         # result = ser.write(chr(0x10).encode("utf-8"))
         # result = ser.write("02040000000271F8".encode("gbk"))
-        print("写总字节数：", result)
+        # print("写总字节数：", result)
         # 数据的接收
         # ser.close()  # 关闭串口
     except Exception as e:
@@ -46,7 +46,7 @@ def uart_recv():
                 #                      转换成b'6812907856351268910a3437333745c3ab896845e016'
                 #                      通过[]去除前后的b'',得到我们真正想要的数据
                 recv_data=str(binascii.b2a_hex(data))[2:-1]
-                print("receive:",recv_data)
+                # print("receive:",recv_data)
                 return recv_data
 
 if __name__ == '__main__':
